@@ -39,7 +39,7 @@ def generator(batch_size, validation=False):
 		table = 'train'
 	
 	# Connect to the database
-	conn = psycopg2.connect(database='giswater3', user='postgres', password='postgres', host='localhost')
+	conn = psycopg2.connect(database='gw34', user='postgres', password='postgres', host='localhost')
 	cursor = conn.cursor()
 	
 	# Get the temperature data
@@ -51,27 +51,21 @@ def generator(batch_size, validation=False):
 		
 		# Select half a batch of broken pipes and the other hald of never borken pipes
 		cursor.execute(
-			f"(SELECT data, station_id, expl_n_id, age, material, pnom, dnom, slope, n_connec, consum, length, mean, true as broke "
-			f"FROM api_ws_sample.v_ai_pipeleak_{table}_leak a "
-			f"JOIN ai_ndvi b ON (a.id = b.arc_id) WHERE mean is not null "
+			f"(SELECT n_expl_id, age, material, pnom, dnom, slope, n_connec, consum, length, ndvi, true as broke "
+			f"FROM ws.v_ai_pipeleak_{table}_leak "
 			f"ORDER BY random() LIMIT {batch_size // 2}) "
 			f"UNION "
-			f"(SELECT data, station_id, expl_n_id, age, material, pnom, dnom, slope, n_connec, consum, length, mean, false as broke "
-			f"FROM api_ws_sample.v_ai_pipeleak_{table}_noleak a "
-			f"JOIN ai_ndvi b ON (a.id = b.arc_id) WHERE mean is not null "
+			f"(SELECT n_expl_id, age, material, pnom, dnom, slope, n_connec, consum, length, ndvi, false as broke "
+			f"FROM ws.v_ai_pipeleak_{table}_noleak "
 			f"ORDER BY random() LIMIT {batch_size // 2})")
 		rows = cursor.fetchall()
 		data = list(zip(*rows))
 		
 		# Get aditional data
 		result = data[-1]  		# Did it break?
-		station_id = data[1]	# Meteorologic station id
-		broken_date = data[0]  	# Date
 		
 		# Delete this aditional data from main inputs
 		data.pop(-1)
-		data.pop(1)
-		data.pop(0)
 		
 		# Extract the temperature data 6 months prior the break
 		# tmax = []
@@ -87,7 +81,7 @@ def generator(batch_size, validation=False):
 		# data.append(tmin)
 		
 		# Send the the inputs and the targets
-		yield (norm_input_arr(data), list(map(float, result)))
+		yield norm_input_arr(data), list(map(float, result))
 
 
 # To be able to test diferent models: loop througth every convination of dropout and structure of the network

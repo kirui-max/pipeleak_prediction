@@ -26,16 +26,31 @@ create view v_ai_pipeleak_main_noleak as
 				when any_2018::integer is null then 0::integer 
 				else any_2018::integer
 			end as consum,
+			press_mean::numeric,
+			press_delta::numeric,
+			vel_mean::numeric,
+			vel_delta::numeric,
+			mean::numeric as ndvi,
+			delta::numeric,
 			length::numeric,
 			expl_id::integer,
 			--station_id::text,
 			n_expl_id::integer
 		from
-			t_ai_pipeleak_raw_noleak
+			(((t_ai_pipeleak_raw_leak
 			join
 			t_ai_exploitation
-			using (expl_id)
-		) a
+			using (expl_id))
+			join
+			t_hydraulic_model
+			using (arc_id))
+			join
+			t_ndvi
+			using (arc_id))
+			join
+			v_elev_delta
+			using(arc_id)
+			) a
 
 	where
 		dnom > 0 and
