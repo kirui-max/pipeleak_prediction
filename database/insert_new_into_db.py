@@ -1,21 +1,23 @@
 import psycopg2
 import numpy as np
 import time
+import csv
 
 # Connect to postgres
 try:
 	conn = psycopg2.connect(database='gw34', user='postgres', password='postgres', host='localhost')
+	cursor = conn.cursor()
 
 except:
 	raise
 
+
+'''
 class Pipe:
 	def __init__(self):
 		self.segments = []
 		self.node1 = None
 		self.node2 = None
-
-cursor = conn.cursor()
 
 
 print("Getting raw data...")
@@ -102,15 +104,21 @@ for i, (id, info) in enumerate(result.items()):
 
 	press_data = np.mean(np.array([node1, node2]), axis=0)
 
+	press_min = np.min(press_data)
+	press_max = np.max(press_data)
 	press_mean = np.mean(press_data)
-	press_delta = np.max(press_data) - np.min(press_data)
-	vel_mean = np.mean(vel_data)
-	vel_delta = np.max(vel_data) - np.min(vel_data)
 	
-	cursor.execute(f"INSERT INTO ws.t_hydraulic_model VALUES('{id}', {press_mean}, {press_delta}, {vel_mean}, {vel_delta})")
+	vel_min = np.min(vel_data)
+	vel_max = np.max(vel_data)
+	vel_mean = np.mean(vel_data)
+	
+	sql = f"INSERT INTO ws.ai_hydraulics VALUES('{id}', " \
+		  f"NULL, NULL, NULL, " \
+		  f"{press_min}, {press_max}, {press_mean}, " \
+		  f"{vel_min}, {vel_max}, {vel_mean})"
+	cursor.execute(sql)
 
 conn.commit()
-
 
 	# print(speed_mean, speed_delta)
 	# print(press_mean, press_delta)
@@ -125,6 +133,32 @@ conn.commit()
 # print(result['127345'])
 
 
+
+'''
+
+
+file = csv.reader(open("D:/Development/Datasets/canonades/presszone.csv"), delimiter=';')
+next(file)
+
+cursor.execute("DELETE FROM ws.t_presszone")
+
+for i, row in enumerate(file):
+	
+	if (i % 100 == 0):
+		print(i)
+
+	if (row[2] == ''):
+		continue
+		
+
+	sql = f"INSERT INTO ws.t_presszone VALUES({row[0]}, '{row[1]}', {row[2]}, '{row[3]}')"
+	# sql = f"UPDATE ws.t_ai_pipeleak_raw_all SET minsector_id = {row[2]} WHERE arc_id = '{row[1]}'"
+	
+	# print(sql)
+	
+	cursor.execute(sql)
+
+conn.commit()
 
 '''
 file = csv.reader(open("D:/Development/Datasets/canonades/XARXA_NODE.txt"), delimiter=',')

@@ -2,8 +2,8 @@
 This script abstracts the creation of a tf.keras model
 """
 
-from tensorflow.python.keras.api._v2.keras.models import Model
-from tensorflow.python.keras.api._v2.keras.layers import Input, Dense, Dropout, Embedding, Concatenate, Flatten
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense, Dropout, Embedding, Concatenate, Flatten
 
 # Stores the input and output of each input
 class ModelInput:
