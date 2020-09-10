@@ -1,6 +1,6 @@
-﻿DROP VIEW IF EXISTS ws.v_ai_leak_arc_aux;
+﻿DROP MATERIALIZED VIEW IF EXISTS ws.v_ai_leak_arc_aux CASCADE;
 
-CREATE VIEW ws.v_ai_leak_arc_aux AS
+CREATE MATERIALIZED VIEW ws.v_ai_leak_arc_aux AS
 
 	SELECT * FROM (
 		SELECT
@@ -12,7 +12,7 @@ CREATE VIEW ws.v_ai_leak_arc_aux AS
 				WHEN broken = TRUE THEN ((leak_date - builtdate) / 365.0)::numeric
 				ELSE ((now()::DATE - builtdate) / 365.0)::numeric
 			END as age,
-			expl_id::bigint,
+			n_expl_id::bigint as expl_id,
 			normalized_id::integer AS matcat_id,
 			pnom::numeric,
 			dnom::numeric,
@@ -54,6 +54,7 @@ CREATE VIEW ws.v_ai_leak_arc_aux AS
 			JOIN ws.ai_hydraulics USING (arc_id)
 			JOIN ws.ai_ndvi USING (arc_id)
 			JOIN ws.ai_material m ON (m.source_id = matcat_id)
+			JOIN ws.ai_exploitation USING (expl_id)
 
 		WHERE 
 			pnom::numeric >= (SELECT value FROM ws.config_param_system WHERE parameter = 'treshold_arc_pnom_min')::numeric and

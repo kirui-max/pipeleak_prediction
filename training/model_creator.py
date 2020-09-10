@@ -7,9 +7,10 @@ from tensorflow.keras.layers import Input, Dense, Dropout, Embedding, Concatenat
 
 # Stores the input and output of each input
 class ModelInput:
-	def __init__(self, input, output):
+	def __init__(self, input, output, name):
 		self.input = input
 		self.output = output
+		self.name = name
 
 # Abstraction to create a model
 class MakeModel:
@@ -21,7 +22,7 @@ class MakeModel:
 	def add_numeric_input(self, name, n=1):
 		
 		x = Input((n,), name=name)
-		self.inputs.append(ModelInput(x, x))
+		self.inputs.append(ModelInput(x, x, name))
 	
 	# Add @n categorical inputs with @categories_count categories
 	def add_categorical_input(self, name, categories_count, n=1):
@@ -30,7 +31,7 @@ class MakeModel:
 		h_x = Embedding(categories_count, 1, name=f'emb_{name}')(x)
 		h_x = Flatten(name=f'float_{name}')(h_x)
 		
-		self.inputs.append(ModelInput(x, h_x))
+		self.inputs.append(ModelInput(x, h_x, name))
 	
 	# Concatenate the inputs and make the hidden layers. It return an uncompiled model
 	def make_model(self, layers, dropout) -> Model:

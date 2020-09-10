@@ -5,6 +5,7 @@ This script analizes the database and
 import psycopg2
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 
 # Connect to postgres dataset
 try:
@@ -38,22 +39,28 @@ def plot_dist(var, table, condition='true', distinct=''):
 	return sns.distplot(data, kde=False)
 
 
-# condition = "mean is not null"
-# condition = "consum < 30000 and consum > 50"
-
-# table = "ws.v_ai_pipeleak_main_leak a join ai_ndvi b on (a.id = b.arc_id)"
-main_leak = "ws.v_ai_pipeleak_main_leak"
-main_noleak = "ws.v_ai_pipeleak_main_noleak"
-condition = "length < 1000 and length > 0"
-
-# plot_dist('age', table, distinct='distinct on (age)')
-
-plot_dist('age', main_leak, condition=condition, distinct='distinct on (id, data)')
-
-plot_dist('age', main_noleak, condition=condition, distinct='distinct on (id, data)')
-
-# table = "api_ws_sample.v_ai_pipeleak_main_noleak a join ai_ndvi b on (a.id = b.arc_id)"
-# plot_dist('mean', table, condition)
+plot_dist(
+	'vel_max', 
+	'ws.v_ai_leak_minsector', 
+	condition='vel_max < 2.5'
+)
 
 plt.tight_layout()
 plt.show()
+
+'''
+cursor.execute('SELECT total_length, leaks FROM ws.v_ai_leak_minsector')
+data = cursor.fetchall()
+
+# Get it as an array of values
+length = list(zip(*data))[0]
+leaks = list(zip(*data))[1]
+
+# Turn it into float
+length = list(map(float, length))
+leaks = list(map(float, leaks))
+
+plt.scatter(length, leaks)
+plt.tight_layout()
+plt.show()
+'''

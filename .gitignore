@@ -1,2 +1,5 @@
 models/
 .idea/
+/training/saves/
+/training/logs/
+__pycache__/

@@ -7,33 +7,11 @@ CREATE VIEW ws.v_ai_leak_minsector AS
         total_length,
         leaks,
         age,
-        CASE 
-            WHEN mat_asb is NULL THEN 0
-            ELSE mat_asb
-        END as mat_asb,
-        CASE 
-            WHEN mat_tir is NULL THEN 0
-            ELSE mat_tir
-        END as mat_tir,
-        CASE 
-            WHEN mat_iro is NULL THEN 0
-            ELSE mat_iro
-        END as mat_iro,
-        CASE 
-            WHEN mat_pex is NULL THEN 0
-            ELSE mat_pex
-        END as mat_pex,
-        CASE 
-            WHEN mat_pvc is NULL THEN 0
-            ELSE mat_pvc
-        END as mat_pvc,
-        CASE 
-            WHEN mat_oth is NULL THEN 0
-            ELSE mat_oth
-        END as mat_oth,
+        mats,
         pnom,
         dnom,
         uconnec,
+        udemand,
         slope,
         elev_delta,
         press_range,
@@ -75,7 +53,18 @@ CREATE VIEW ws.v_ai_leak_minsector AS
 
         JOIN 
 
-        (SELECT ct.* FROM 
+        (SELECT 
+            minsector_id,
+            ARRAY[
+                COALESCE(mat_asb, 0),
+                COALESCE(mat_tir, 0),
+                COALESCE(mat_iro, 0),
+                COALESCE(mat_pex, 0),
+                COALESCE(mat_pvc, 0),
+                COALESCE(mat_oth, 0)
+            ] as mats
+
+        FROM 
             crosstab('
             SELECT 
                 minsector_id,
@@ -123,12 +112,12 @@ CREATE VIEW ws.v_ai_leak_minsector AS
         USING (minsector_id)
 
     WHERE 
-        frequency > 0 and
+        frequency > (SELECT value FROM ws.config_param_system WHERE parameter = 'treshold_minsector_frequency_min')::numeric and
         frequency < (SELECT value FROM ws.config_param_system WHERE parameter = 'treshold_minsector_frequency_max')::numeric;
 
 
-create materialized view ws.v_ai_leak_minsector_train as
-select * from ws.v_ai_leak_minsector where random() < 0.8;
+CREATE materialized view ws.v_ai_leak_minsector_train AS
+SELECT * from ws.v_ai_leak_minsector WHERE random() < 0.8;
 
-create materialized view ws.v_ai_leak_minsector_valid as
-select * from ws.v_ai_leak_minsector a where not exists (select from ws.v_ai_leak_minsector_train where a.minsector_id = minsector_id);
+CREATE materialized view ws.v_ai_leak_minsector_valid AS
+SELECT * FROM ws.v_ai_leak_minsector a WHERE NOT EXISTS (SELECT FROM ws.v_ai_leak_minsector_train WHERE a.minsector_id = minsector_id);

@@ -5,20 +5,18 @@ This script trains a model with data from the database
 import sys
 sys.path.append("..")
 
-import warnings
-import logging
-warnings.simplefilter('ignore')
-
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 import psycopg2
 import datetime
 
-from utils import *
+from utils import map_func, scale, diff95
 
+import numpy as np
 from tensorflow.python.keras.callbacks import TensorBoard, ModelCheckpoint
 
-logging.getLogger('tensorflow').disabled = True
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from training.model_creator import MakeModel
 
@@ -31,8 +29,35 @@ class Config:
 		self.epochs = epochs
 
 
+def norm_inputs(inputs: dict):
+	
+	def norm_expl_id(x): 			return x
+	def norm_age(x): 				return scale(float(x), 0, 70)
+	def norm_mats(x): 				return map_func(float, x)
+	def norm_pnom(x): 				return scale(float(x), 0, 16)
+	def norm_dnom(x):				return scale(float(x), 0, 300)
+	def norm_uconnec(x):			return scale(float(x), 0, 0.05)
+	def norm_udemand(x):			return scale(float(x), 0, 20)
+	def norm_slope(x):				return scale(float(x), 0, 20)
+	def norm_elev_delta(x):			return scale(float(x), -150, 150)
+	def norm_press_range(x):		return scale(float(x), 0, 30)
+	def norm_press_mean(x):			return scale(float(x), 0, 120)
+	def norm_press_mean_pnom(x):	return scale(float(x), 0, 1)
+	def norm_press_max_pnom(x):		return scale(float(x), 0, 1)
+	# def norm_vel_min(x):			return float(x)
+	def norm_vel_max(x):			return scale(float(x), 0, 2.5)
+	def norm_vel_mean(x):			return scale(float(x), 0, 2.5)
+	def norm_ndvi_mean(x):			return scale(float(x), 0, 0.25)
+	
+	for key in inputs.keys():
+		func = locals()[f'norm_{key}']
+		inputs[key] = map_func(func, inputs[key])
+	
+	return tuple(inputs.values())
+
+
 # Generator of training and validation data
-def generator(batch_size, validation=False):
+def generator(batch_size, input_names, validation=False):
 	if validation:
 		table = 'valid'
 	else:
@@ -42,73 +67,63 @@ def generator(batch_size, validation=False):
 	conn = psycopg2.connect(database='gw34', user='postgres', password='postgres', host='localhost')
 	cursor = conn.cursor()
 	
-	# Get the temperature data
-	# cursor.execute(f"select period, val from api_ws_sample.ext_timeseries")
-	# temperature = cursor.fetchall()
-	
 	# Forever keep sending new batchs of data
 	while True:
 		
-		# Select half a batch of broken pipes and the other hald of never borken pipes
 		cursor.execute(
-			f"(SELECT n_expl_id, age, material, pnom, dnom, slope, n_connec, consum, length, ndvi, true as broke "
-			f"FROM ws.v_ai_pipeleak_{table}_leak "
-			f"ORDER BY random() LIMIT {batch_size // 2}) "
-			f"UNION "
-			f"(SELECT n_expl_id, age, material, pnom, dnom, slope, n_connec, consum, length, ndvi, false as broke "
-			f"FROM ws.v_ai_pipeleak_{table}_noleak "
-			f"ORDER BY random() LIMIT {batch_size // 2})")
+			f"SELECT "
+			f"{', '.join(input_names)}, frequency "
+			f"FROM ws.v_ai_leak_minsector_{table} "
+			f"ORDER BY random() LIMIT {batch_size}"
+		)
 		rows = cursor.fetchall()
 		data = list(zip(*rows))
 		
 		# Get aditional data
-		result = data[-1]  		# Did it break?
-		
-		# Delete this aditional data from main inputs
+		frequency = data[-1]
 		data.pop(-1)
 		
-		# Extract the temperature data 6 months prior the break
-		# tmax = []
-		# tmin = []
-		#
-		# for s, date in zip(station_id, broken_date):
-		# 	index = (date.year - 2007) * 12 + date.month
-		#
-		# 	tmax.append([t[1][index - 6: index] for t in temperature if t[0]['id'] == s + 'max'][0])
-		# 	tmin.append([t[1][index - 6: index] for t in temperature if t[0]['id'] == s + 'min'][0])
-		#
-		# data.append(tmax)
-		# data.append(tmin)
+		data = dict(zip(input_names, data))
+		inputs = norm_inputs(data)
+
+		target = np.array(list(map(lambda x: float(x) / 5, frequency)))
 		
 		# Send the the inputs and the targets
-		yield norm_input_arr(data), list(map(float, result))
+		yield inputs, target
 
 
 # To be able to test diferent models: loop througth every convination of dropout and structure of the network
 dropouts = [0]
-# structures = [[32], [32, 64], [64, 128]]
-structures = [[32]]
+structures = [[32, 32], [32, 64], [64, 128]]
+# structures = [[32]]
 
 for dropout in dropouts:
 	for structure in structures:
 		
-		cfg = Config(layers=structure, dropout=dropout, batch_size=1024, epochs=15)
+		cfg = Config(layers=structure, dropout=dropout, batch_size=128, epochs=20)
 		
 		# Create the model
 		creator = MakeModel()
 		
-		creator.add_categorical_input('expl_id', 24)
+		creator.add_categorical_input('expl_id', 25)
 		creator.add_numeric_input('age')
-		creator.add_categorical_input('material', 6)
+		creator.add_numeric_input('mats', n=6)
 		creator.add_numeric_input('pnom')
 		creator.add_numeric_input('dnom')
+		creator.add_numeric_input('uconnec')
+		creator.add_numeric_input('udemand')
 		creator.add_numeric_input('slope')
-		creator.add_numeric_input('n_connec')
-		creator.add_numeric_input('consum')
-		creator.add_numeric_input('length')
-		creator.add_numeric_input('ndvi')
-		# creator.add_numeric_input('tmax', n=6)
-		# creator.add_numeric_input('tmin', n=6)
+		creator.add_numeric_input('elev_delta')
+		creator.add_numeric_input('press_range')
+		creator.add_numeric_input('press_mean')
+		creator.add_numeric_input('press_mean_pnom')
+		creator.add_numeric_input('press_max_pnom')
+		# creator.add_numeric_input('vel_min')
+		creator.add_numeric_input('vel_max')
+		creator.add_numeric_input('vel_mean')
+		creator.add_numeric_input('ndvi_mean')
+		
+		input_names = [i.name for i in creator.inputs]
 		
 		model = creator.make_model(layers=cfg.layers, dropout=cfg.dropout)
 		
@@ -146,11 +161,11 @@ for dropout in dropouts:
 		)
 		
 		# Train the model
-		model.fit_generator(
-			generator=generator(batch_size=cfg.batch_size),
-			validation_data=generator(batch_size=200, validation=True),
+		model.fit(
+			x=generator(batch_size=cfg.batch_size, input_names=input_names),
+			validation_data=generator(batch_size=200, input_names=input_names, validation=True),
 			validation_steps=5,
-			steps_per_epoch=100,
+			steps_per_epoch=300,
 			epochs=cfg.epochs,
 			callbacks=[tb, cp]
 		)
