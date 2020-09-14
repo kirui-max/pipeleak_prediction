@@ -34,18 +34,19 @@ class MakeModel:
 		self.inputs.append(ModelInput(x, h_x, name))
 	
 	# Concatenate the inputs and make the hidden layers. It return an uncompiled model
-	def make_model(self, layers, dropout) -> Model:
+	def make_model(self, layers, dropout, activation) -> Model:
 		
 		concatenated = Concatenate(name='concatenated')([i.output for i in self.inputs])
 		
 		pre_layer = concatenated
+		print(layers)
 		for i, units in enumerate(layers):
 			
-			pre_layer = Dense(units, activation='relu', name=f'dense_{i}')(pre_layer)
+			pre_layer = Dense(units, activation=activation, name=f'dense_{i}')(pre_layer)
 				
 			if dropout != 0:
 				pre_layer = Dropout(dropout)(pre_layer)
 		
-		output = Dense(1, activation='sigmoid', name='output')(pre_layer)
+		output = Dense(1, activation='relu', name='output')(pre_layer)
 		
 		return Model([i.input for i in self.inputs], output)
