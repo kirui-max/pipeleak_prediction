@@ -18,22 +18,21 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 from tensorflow.python.keras.callbacks import TensorBoard, ModelCheckpoint
 
-leak_percent = 0.5
-
 from training.model_creator import MakeModel
 
 # Stores diferent onfiguration variables
 class Config:
-	def __init__(self, optimizer, layers, dropout, activation, batch_size, epochs):
+	def __init__(self, optimizer, layers, dropout, activation, batch_size, leak_percent, epochs):
 		self.optimizer = optimizer
 		self.layers = layers
 		self.dropout = dropout
 		self.activation = activation
 		self.batch_size = batch_size
+		self.leak_percent = leak_percent
 		self.epochs = epochs
 	
 	def as_string(self):
-		return f"opt={self.optimizer}-layers={self.layers}-drop={self.dropout}-activ={self.activation}-bs={self.batch_size}-epochs={self.epochs}"
+		return f"opt={self.optimizer}-layers={self.layers}-drop={self.dropout}-activ={self.activation}-bs={self.batch_size}-lp={self.leak_percent}-epochs={self.epochs}"
 
 
 def norm_inputs(inputs: dict):
@@ -64,7 +63,7 @@ def norm_inputs(inputs: dict):
 
 
 # Generator of training and validation data
-def generator(batch_size, input_names, validation=False):
+def generator(batch_size, input_names, leak_percent, validation=False):
 	if validation:
 		table = 'valid'
 	else:
@@ -109,11 +108,12 @@ optimizers = ['adam']
 dropouts = [0]
 structures = [[16]]
 activations = ['relu']
+leak_percents = [0.5]
 batch_sizes = [128]
 
-for opt, drop, stru, activ, bs in itertools.product(*[optimizers, dropouts, structures, activations, batch_sizes]):
+for opt, drop, stru, activ, lp, bs in itertools.product(*[optimizers, dropouts, structures, activations, leak_percents, batch_sizes]):
 	
-	cfg = Config(optimizer=opt, layers=stru, dropout=drop, activation=activ, batch_size=bs, epochs=20)
+	cfg = Config(optimizer=opt, layers=stru, dropout=drop, activation=activ, leak_percent=lp, batch_size=bs, epochs=20)
 	
 	# Create the model
 	creator = MakeModel()
@@ -148,7 +148,7 @@ for opt, drop, stru, activ, bs in itertools.product(*[optimizers, dropouts, stru
 	
 	# Create model name
 	DATE = datetime.datetime.now().strftime('%d%m%Y_%H%M%S')
-	NAME = f"{cfg.as_string()}-time={DATE}"
+	NAME = f"arc-{cfg.as_string()}-time={DATE}"
 	print(NAME)
 	
 	# Make logs direcories
@@ -175,8 +175,8 @@ for opt, drop, stru, activ, bs in itertools.product(*[optimizers, dropouts, stru
 	
 	# Train the model
 	model.fit(
-		x=generator(batch_size=cfg.batch_size, input_names=input_names),
-		validation_data=generator(batch_size=200, input_names=input_names, validation=True),
+		x=generator(batch_size=cfg.batch_size, input_names=input_names, leak_percent=cfg.leak_percent),
+		validation_data=generator(batch_size=200, input_names=input_names, leak_percent=cfg.leak_percent, validation=True),
 		validation_steps=5,
 		steps_per_epoch=300,
 		epochs=cfg.epochs,

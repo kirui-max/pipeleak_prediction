@@ -11,7 +11,7 @@ import psycopg2
 import datetime
 import itertools
 
-from utils import map_func, scale, diff95
+from utils import map_func, scale
 
 import numpy as np
 import tensorflow as tf
@@ -141,7 +141,7 @@ for opt, drop, stru, activ, bs in itertools.product(*[optimizers, dropouts, stru
 	
 	# Create model name
 	DATE = datetime.datetime.now().strftime('%d%m%Y_%H%M%S')
-	NAME = f"{cfg.as_string()}-time={DATE}"
+	NAME = f"minsector-{cfg.as_string()}-time={DATE}"
 	print(NAME)
 	
 	# Make logs direcories
