@@ -34,7 +34,7 @@ class Config:
 	def as_string(self):
 		return f"opt={self.optimizer}-layers={self.layers}-drop={self.dropout}-activ={self.activation}-bs={self.batch_size}-lp={self.leak_percent}-epochs={self.epochs}"
 
-
+# Normalize inputs
 def norm_inputs(inputs: dict):
 	
 	def norm_expl_id(x): 			return x
@@ -104,12 +104,12 @@ def generator(batch_size, input_names, leak_percent, validation=False):
 
 
 # To be able to test diferent models: loop througth every convination of dropout and structure of the network
-optimizers = ['adam']
-dropouts = [0]
-structures = [[16]]
-activations = ['relu']
-leak_percents = [0.5]
-batch_sizes = [128]
+optimizers = ['adam']		# Model optimizer
+dropouts = [0]				# Dropout percernt
+structures = [[32, 16]]		# Number of neurons per layer
+activations = ['relu']		# Hidden layers activation
+leak_percents = [0.5]		# Percentage of leaks respect those which didn't leak
+batch_sizes = [128]			# Batch size
 
 for opt, drop, stru, activ, lp, bs in itertools.product(*[optimizers, dropouts, structures, activations, leak_percents, batch_sizes]):
 	
@@ -118,6 +118,7 @@ for opt, drop, stru, activ, lp, bs in itertools.product(*[optimizers, dropouts, 
 	# Create the model
 	creator = MakeModel()
 	
+	# Set the model inputs
 	creator.add_categorical_input('expl_id', 25)
 	creator.add_numeric_input('age')
 	creator.add_categorical_input('matcat_id', 6)
@@ -136,10 +137,13 @@ for opt, drop, stru, activ, lp, bs in itertools.product(*[optimizers, dropouts, 
 	creator.add_numeric_input('vel_mean')
 	creator.add_numeric_input('ndvi_mean')
 	
+	# Get all input names
 	input_names = [i.name for i in creator.inputs]
 	
+	# Construct the model
 	model = creator.make_model(layers=cfg.layers, dropout=cfg.dropout, activation=cfg.activation, output_activation='sigmoid')
 	
+	# Compile the model
 	model.compile(
 		optimizer=cfg.optimizer,
 		loss='binary_crossentropy',
