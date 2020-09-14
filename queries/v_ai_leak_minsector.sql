@@ -116,8 +116,8 @@ CREATE VIEW ws.v_ai_leak_minsector AS
         frequency < (SELECT value FROM ws.config_param_system WHERE parameter = 'treshold_minsector_frequency_max')::numeric;
 
 
-CREATE materialized view ws.v_ai_leak_minsector_train AS
+CREATE MATERIALIZED VIEW ws.v_ai_leak_minsector_train AS
 SELECT * from ws.v_ai_leak_minsector WHERE random() < 0.8;
 
-CREATE materialized view ws.v_ai_leak_minsector_valid AS
+CREATE MATERIALIZED VIEW ws.v_ai_leak_minsector_valid AS
 SELECT * FROM ws.v_ai_leak_minsector a WHERE NOT EXISTS (SELECT FROM ws.v_ai_leak_minsector_train WHERE a.minsector_id = minsector_id);

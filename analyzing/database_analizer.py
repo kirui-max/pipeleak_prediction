@@ -40,9 +40,8 @@ def plot_dist(var, table, condition='true', distinct=''):
 
 
 plot_dist(
-	'vel_max', 
-	'ws.v_ai_leak_minsector', 
-	condition='vel_max < 2.5'
+	'frequency',
+	'ws.v_ai_leak_minsector',
 )
 
 plt.tight_layout()
