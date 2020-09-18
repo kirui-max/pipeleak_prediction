@@ -20,6 +20,8 @@ from tensorflow.python.keras.callbacks import TensorBoard, ModelCheckpoint
 
 from training.model_creator import MakeModel
 
+import configparser
+
 # Stores diferent onfiguration variables
 class Config:
 	def __init__(self, optimizer, layers, dropout, activation, batch_size, epochs):
@@ -67,9 +69,19 @@ def generator(batch_size, input_names, validation=False):
 		table = 'valid'
 	else:
 		table = 'train'
-	
+
+	# getting conn parameters
+	parser = configparser.ConfigParser()
+	parser.read('../config.conf')
+	host = parser.get(section='CONNECTION', option='host')
+	port = parser.get(section='CONNECTION', option='port')
+	db = parser.get(section='CONNECTION', option='db')
+	user = parser.get(section='CONNECTION', option='user')
+	password = parser.get(section='CONNECTION', option='password')
+	schema_name = parser.get(section='OTHER', option='schema_name')
+
 	# Connect to the database
-	conn = psycopg2.connect(database='gw34', user='postgres', password='postgres', host='localhost')
+	conn = psycopg2.connect(database=db, user=user, password=password, host=host, port=port)
 	cursor = conn.cursor()
 	
 	# Forever keep sending new batchs of data
@@ -78,7 +90,7 @@ def generator(batch_size, input_names, validation=False):
 		cursor.execute(
 			f"SELECT "
 			f"{', '.join(input_names)}, frequency "
-			f"FROM ws.v_ai_leak_minsector_{table} "
+			f"FROM {schema_name}.v_ai_leak_minsector_{table} "
 			f"ORDER BY random() LIMIT {batch_size}"
 		)
 		rows = cursor.fetchall()

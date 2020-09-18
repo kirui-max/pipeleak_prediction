@@ -3,3 +3,4 @@ models/
 /training/saves/
 /training/logs/
 __pycache__/
+config.conf

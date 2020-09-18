@@ -20,6 +20,8 @@ from tensorflow.python.keras.callbacks import TensorBoard, ModelCheckpoint
 
 from training.model_creator import MakeModel
 
+import configparser
+
 # Stores diferent onfiguration variables
 class Config:
 	def __init__(self, optimizer, layers, dropout, activation, batch_size, leak_percent, epochs):
@@ -68,9 +70,19 @@ def generator(batch_size, input_names, leak_percent, validation=False):
 		table = 'valid'
 	else:
 		table = 'train'
-	
+
+	# getting conn parameters
+	parser = configparser.ConfigParser()
+	parser.read('../config.conf')
+	host = parser.get(section='CONNECTION', option='host')
+	port = parser.get(section='CONNECTION', option='port')
+	db = parser.get(section='CONNECTION', option='db')
+	user = parser.get(section='CONNECTION', option='user')
+	password = parser.get(section='CONNECTION', option='password')
+	schema_name = parser.get(section='OTHER', option='schema_name')
+
 	# Connect to the database
-	conn = psycopg2.connect(database='gw34', user='postgres', password='postgres', host='localhost')
+	conn = psycopg2.connect(database=db, user=user, password=password, host=host, port=port)
 	cursor = conn.cursor()
 	
 	# Forever keep sending new batchs of data
@@ -79,12 +91,12 @@ def generator(batch_size, input_names, leak_percent, validation=False):
 		cursor.execute(
 			f"(SELECT "
 			f"{', '.join(input_names)}, broken "
-			f"FROM ws.v_ai_leak_arc_leak_{table} "
+			f"FROM {schema_name}.v_ai_leak_arc_leak_{table} "
 			f"ORDER BY random() LIMIT {int(batch_size * leak_percent)}) "
 			f"UNION "
 			f"(SELECT "
 			f"{', '.join(input_names)}, broken "
-			f"FROM ws.v_ai_leak_arc_noleak_{table} "
+			f"FROM {schema_name}.v_ai_leak_arc_noleak_{table} "
 			f"ORDER BY random() LIMIT {batch_size - int(batch_size * leak_percent)}) "
 		)
 		rows = cursor.fetchall()
