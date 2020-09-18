@@ -6,7 +6,6 @@ sys.path.append("..")
 
 from tensorflow.keras.models import load_model
 import psycopg2
-from utils import diff95
 import pandas
 from training.train_minsector_model import norm_inputs
 import configparser
@@ -27,6 +26,7 @@ cursor = conn.cursor()
 
 print('Getting data')
 
+# Set model input names
 input_names = [
 	'expl_id',
 	'age',
@@ -62,8 +62,9 @@ data = dict(zip(input_names, data))
 inputs = norm_inputs(data)
 
 
+# Choose trained model to predict
 print('Creating model')
-model = load_model('../models/final.h5', custom_objects={'diff95': diff95})
+model = load_model('../models/final.h5')
 
 
 print('Predicting result')

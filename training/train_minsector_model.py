@@ -24,18 +24,20 @@ import configparser
 
 # Stores diferent onfiguration variables
 class Config:
-	def __init__(self, optimizer, layers, dropout, activation, batch_size, epochs):
+	def __init__(self, optimizer, layers, dropout, activation, batch_size, epochs, loss):
 		self.optimizer = optimizer
 		self.layers = layers
 		self.dropout = dropout
 		self.activation = activation
 		self.batch_size = batch_size
 		self.epochs = epochs
-		
-	def as_string(self):
-		return f"opt={self.optimizer}-layers={self.layers}-drop={self.dropout}-activ={self.activation}-bs={self.batch_size}-epochs={self.epochs}"
+		self.loss = loss
 
-# Normalize inputs
+	def as_string(self):
+		return f"opt={self.optimizer}-layers={self.layers}-drop={self.dropout}-activ={self.activation}" \
+			   f"-bs={self.batch_size}-loss={self.loss}-epochs={self.epochs}"
+
+# Set normalize inputs
 def norm_inputs(inputs: dict):
 	
 	def norm_expl_id(x): 			return x
@@ -110,22 +112,35 @@ def generator(batch_size, input_names, validation=False):
 
 
 if __name__ == '__main__':
-	
-	# To be able to test diferent models: loop througth every convination of dropout and structure of the network
+
+	# Set model parameters: To be able to test diferent models: loop througth every convination of dropout and structure of the network
+
+	# dynamic variables
 	optimizers = ['adam']		# Model optimizer
-	dropouts = [0]				# Dropout percernt
+	dropouts = [0]				# Dropout percent
 	structures = [[16]]			# Number of neurons per layer
 	activations = ['relu']		# Hidden layers activation
 	batch_sizes = [128]			# Batch size
-	
-	for opt, drop, stru, activ, bs in itertools.product(*[optimizers, dropouts, structures, activations, batch_sizes]):
-		
-		cfg = Config(optimizer=opt, layers=stru, dropout=drop, activation=activ, batch_size=bs, epochs=20)
+	losses = [					# Losses function
+		'mse'
+	]
+
+	# statics variables (not used on loop)
+	epochs = 3 					# Number of epochs
+	metrics = [					# Metrics parameters.
+		tf.metrics.MeanSquaredError(),
+		tf.metrics.RootMeanSquaredError()
+	]
+
+
+	for opt, drop, stru, activ, bs, loss in itertools.product(*[optimizers, dropouts, structures, activations, batch_sizes, losses]):
+
+		cfg = Config(optimizer=opt, layers=stru, dropout=drop, activation=activ, batch_size=bs, epochs=epochs, loss=loss)
 		
 		# Create the model
 		creator = MakeModel()
 		
-		# Set the model inputs
+		# Set model inputs
 		creator.add_categorical_input('expl_id', 25)
 		creator.add_numeric_input('age')
 		creator.add_numeric_input('mats', n=6)
@@ -152,9 +167,12 @@ if __name__ == '__main__':
 		
 		# Compile the model
 		model.compile(
+			# Choose optimizer function
 			optimizer=cfg.optimizer,
-			loss='mse',
-			metrics=[tf.metrics.MeanAbsoluteError(), tf.metrics.RootMeanSquaredError()]
+			# Choose losses function
+			loss=cfg.loss,
+			# Choose parameter(s) to metrics
+			metrics=metrics
 		)
 		
 		# Create model name

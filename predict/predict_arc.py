@@ -6,7 +6,6 @@ sys.path.append("..")
 
 from tensorflow.keras.models import load_model
 import psycopg2
-from utils import diff95
 import pandas
 from training.train_arc_model import norm_inputs
 import configparser
@@ -49,7 +48,8 @@ input_names = [
 cursor.execute(
 	f"SELECT "
 	f"{', '.join(input_names)}, arc_id "
-	f"FROM ws.v_ai_leak_arc_raw"
+	f"FROM ws.v_ai_leak_arc_raw "
+	f"WHERE broken IS FALSE"
 )
 rows = cursor.fetchall()
 data = list(zip(*rows))
@@ -63,7 +63,7 @@ inputs = norm_inputs(data)
 
 
 print('Creating model')
-model = load_model('../models/final_minsector.h5')
+model = load_model('../models/final.h5')
 
 
 print('Predicting result')

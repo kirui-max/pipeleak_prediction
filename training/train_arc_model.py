@@ -11,7 +11,7 @@ import psycopg2
 import datetime
 import itertools
 
-from utils import map_func, scale, diff95
+from utils import map_func, scale
 
 import numpy as np
 import tensorflow as tf
@@ -24,7 +24,7 @@ import configparser
 
 # Stores diferent onfiguration variables
 class Config:
-	def __init__(self, optimizer, layers, dropout, activation, batch_size, leak_percent, epochs):
+	def __init__(self, optimizer, layers, dropout, activation, batch_size, leak_percent, epochs, loss):
 		self.optimizer = optimizer
 		self.layers = layers
 		self.dropout = dropout
@@ -32,16 +32,21 @@ class Config:
 		self.batch_size = batch_size
 		self.leak_percent = leak_percent
 		self.epochs = epochs
+		self.loss = loss
 	
 	def as_string(self):
-		return f"opt={self.optimizer}-layers={self.layers}-drop={self.dropout}-activ={self.activation}-bs={self.batch_size}-lp={self.leak_percent}-epochs={self.epochs}"
+		return f"opt={self.optimizer}-layers={self.layers}-drop={self.dropout}-activ={self.activation}" \
+			   f"-bs={self.batch_size}-loss={self.loss}-lp={self.leak_percent}-epochs={self.epochs}"
 
-# Normalize inputs
+# Set normalize inputs
 def norm_inputs(inputs: dict):
-	
+
+	# categorized parameters
 	def norm_expl_id(x): 			return x
-	def norm_age(x): 				return scale(float(x), 0, 70)
 	def norm_matcat_id(x): 			return x
+
+	# numeric parameters
+	def norm_age(x): 				return scale(float(x), 0, 70)
 	def norm_pnom(x): 				return scale(float(x), 0, 16)
 	def norm_dnom(x):				return scale(float(x), 0, 300)
 	def norm_slope(x):				return scale(float(x), 0, 20)
@@ -52,7 +57,6 @@ def norm_inputs(inputs: dict):
 	def norm_press_mean(x):			return scale(float(x), 0, 120)
 	def norm_press_mean_pnom(x):	return scale(float(x), 0, 1)
 	def norm_press_max_pnom(x):		return scale(float(x), 0, 1)
-	# def norm_vel_min(x):			return float(x)
 	def norm_vel_max(x):			return scale(float(x), 0, 2.5)
 	def norm_vel_mean(x):			return scale(float(x), 0, 2.5)
 	def norm_ndvi_mean(x):			return scale(float(x), 0, 0.25)
@@ -116,23 +120,37 @@ def generator(batch_size, input_names, leak_percent, validation=False):
 
 
 if __name__ == '__main__':
-	
-	# To be able to test diferent models: loop througth every convination of dropout and structure of the network
-	optimizers = ['adam']		# Model optimizer
-	dropouts = [0]				# Dropout percernt
-	structures = [[32, 16]]		# Number of neurons per layer
-	activations = ['relu']		# Hidden layers activation
-	leak_percents = [0.5]		# Percentage of leaks respect those which didn't leak
-	batch_sizes = [128]			# Batch size
-	
-	for opt, drop, stru, activ, lp, bs in itertools.product(*[optimizers, dropouts, structures, activations, leak_percents, batch_sizes]):
+
+	# Set model parameters: To be able to test diferent models: loop througth every convination of dropout and structure of the network
+
+	# dynamic variables
+	optimizers = ['adam'] 		# Model optimizer
+	dropouts = [0]  			# Dropout percernt
+	structures = [[16]]  		# Number of neurons per layer
+	activations = ['relu']  	# Hidden layers activation
+	leak_percents = [0.5]  		# Percentage of leaks respect those which didn't leak
+	batch_sizes = [128]  		# Batch size
+	losses = [					# Losses function
+		'binary_crossentropy'
+	]
+
+	# statics variables (not used on loop)
+	epochs = 3  				# Number of epochs
+	metrics = [  				# Metrics parameters
+		tf.metrics.Precision(),
+		tf.metrics.Recall(),
+		tfa.metrics.MatthewsCorrelationCoefficient(1)
+	]
+
+
+	for opt, drop, stru, activ, lp, bs, loss in itertools.product(*[optimizers, dropouts, structures, activations, leak_percents, batch_sizes, losses]):
 		
-		cfg = Config(optimizer=opt, layers=stru, dropout=drop, activation=activ, leak_percent=lp, batch_size=bs, epochs=20)
+		cfg = Config(optimizer=opt, layers=stru, dropout=drop, activation=activ, leak_percent=lp, batch_size=bs, epochs=epochs, loss=loss)
 		
 		# Create the model
 		creator = MakeModel()
 		
-		# Set the model inputs
+		# Set model inputs
 		creator.add_categorical_input('expl_id', 25)
 		creator.add_numeric_input('age')
 		creator.add_categorical_input('matcat_id', 6)
@@ -160,8 +178,8 @@ if __name__ == '__main__':
 		# Compile the model
 		model.compile(
 			optimizer=cfg.optimizer,
-			loss='binary_crossentropy',
-			metrics=[tf.metrics.Precision(), tf.metrics.Recall(), tfa.metrics.MatthewsCorrelationCoefficient(1)]
+			loss=cfg.loss,
+			metrics=metrics
 		)
 		
 		# Create model name
