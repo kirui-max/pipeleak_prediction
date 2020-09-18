@@ -63,7 +63,7 @@ inputs = norm_inputs(data)
 
 
 print('Creating model')
-model = load_model('../models/final_minsector.h5', custom_objects={'diff95': diff95})
+model = load_model('../models/final_minsector.h5')
 
 
 print('Predicting result')

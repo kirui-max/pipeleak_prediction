@@ -10,7 +10,7 @@ CREATE MATERIALIZED VIEW ws.v_ai_leak_arc_aux AS
 			WHEN broken = TRUE THEN ((leak_date - builtdate) / 365.0)::numeric
 			ELSE ((now()::DATE - builtdate) / 365.0)::numeric
 		END as age,
-		n_expl_id::bigint as expl_id,
+		expl_id::bigint,
 		normalized_id::integer AS matcat_id,
 		pnom::numeric,
 		dnom::numeric,
@@ -51,8 +51,7 @@ CREATE MATERIALIZED VIEW ws.v_ai_leak_arc_aux AS
 		) t
 		JOIN ws.ai_hydraulics USING (arc_id)
 		JOIN ws.ai_ndvi USING (arc_id)
-		JOIN ws.ai_material m ON (m.source_id = matcat_id)
-		JOIN ws.ai_exploitation USING (expl_id)
+		JOIN ws.ai_cat_mat m ON (m.source_id = matcat_id)
 
 	WHERE 
 		pnom::numeric > 0
