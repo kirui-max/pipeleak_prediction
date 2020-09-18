@@ -109,88 +109,90 @@ def generator(batch_size, input_names, validation=False):
 		yield inputs, target
 
 
-# To be able to test diferent models: loop througth every convination of dropout and structure of the network
-optimizers = ['adam']		# Model optimizer
-dropouts = [0]				# Dropout percernt
-structures = [[16]]			# Number of neurons per layer
-activations = ['relu']		# Hidden layers activation
-batch_sizes = [128]			# Batch size
+if __name__ == '__main__':
 	
-for opt, drop, stru, activ, bs in itertools.product(*[optimizers, dropouts, structures, activations, batch_sizes]):
+	# To be able to test diferent models: loop througth every convination of dropout and structure of the network
+	optimizers = ['adam']		# Model optimizer
+	dropouts = [0]				# Dropout percernt
+	structures = [[16]]			# Number of neurons per layer
+	activations = ['relu']		# Hidden layers activation
+	batch_sizes = [128]			# Batch size
+	
+	for opt, drop, stru, activ, bs in itertools.product(*[optimizers, dropouts, structures, activations, batch_sizes]):
 		
-	cfg = Config(optimizer=opt, layers=stru, dropout=drop, activation=activ, batch_size=bs, epochs=20)
-	
-	# Create the model
-	creator = MakeModel()
-	
-	# Set the model inputs
-	creator.add_categorical_input('expl_id', 25)
-	creator.add_numeric_input('age')
-	creator.add_numeric_input('mats', n=6)
-	creator.add_numeric_input('pnom')
-	creator.add_numeric_input('dnom')
-	creator.add_numeric_input('uconnec')
-	creator.add_numeric_input('udemand')
-	creator.add_numeric_input('slope')
-	creator.add_numeric_input('elev_delta')
-	creator.add_numeric_input('press_range')
-	creator.add_numeric_input('press_mean')
-	creator.add_numeric_input('press_mean_pnom')
-	creator.add_numeric_input('press_max_pnom')
-	# creator.add_numeric_input('vel_min')
-	creator.add_numeric_input('vel_max')
-	creator.add_numeric_input('vel_mean')
-	creator.add_numeric_input('ndvi_mean')
-	
-	# Get all input names
-	input_names = [i.name for i in creator.inputs]
-	
-	# Construct the model
-	model = creator.make_model(layers=cfg.layers, dropout=cfg.dropout, activation=cfg.activation, output_activation='relu')
-	
-	# Compile the model
-	model.compile(
-		optimizer=cfg.optimizer,
-		loss='mse',
-		metrics=[tf.metrics.MeanAbsoluteError(), tf.metrics.RootMeanSquaredError()]
-	)
-	
-	# Create model name
-	DATE = datetime.datetime.now().strftime('%d%m%Y_%H%M%S')
-	NAME = f"minsector-{cfg.as_string()}-time={DATE}"
-	print(NAME)
-	
-	# Make logs direcories
-	log_dir = os.path.join('logs', NAME)
-	save_dir = os.path.join('saves', NAME)
-	
-	os.makedirs(log_dir)
-	os.makedirs(save_dir)
-	
-	# Callback to be able to see error graphs
-	tb = TensorBoard(
-		log_dir=log_dir,
-		profile_batch=0
-	)
-	
-	# Callback which saves the best model based on the accuracy on the validation data
-	cp = ModelCheckpoint(
-		filepath=os.path.join(save_dir, 'checkp_{epoch:02d}-{val_loss:.3f}.hdf5'),
-		monitor='val_loss',
-		save_best_only=True,
-		verbose=0,
-		save_weights_only=False
-	)
-	
-	# Train the model
-	model.fit(
-		x=generator(batch_size=cfg.batch_size, input_names=input_names),
-		validation_data=generator(batch_size=200, input_names=input_names, validation=True),
-		validation_steps=5,
-		steps_per_epoch=300,
-		epochs=cfg.epochs,
-		callbacks=[tb, cp]
-	)
-	
-	# Save the model
-	model.save(os.path.join(save_dir, 'final.h5'))
+		cfg = Config(optimizer=opt, layers=stru, dropout=drop, activation=activ, batch_size=bs, epochs=20)
+		
+		# Create the model
+		creator = MakeModel()
+		
+		# Set the model inputs
+		creator.add_categorical_input('expl_id', 25)
+		creator.add_numeric_input('age')
+		creator.add_numeric_input('mats', n=6)
+		creator.add_numeric_input('pnom')
+		creator.add_numeric_input('dnom')
+		creator.add_numeric_input('uconnec')
+		creator.add_numeric_input('udemand')
+		creator.add_numeric_input('slope')
+		creator.add_numeric_input('elev_delta')
+		creator.add_numeric_input('press_range')
+		creator.add_numeric_input('press_mean')
+		creator.add_numeric_input('press_mean_pnom')
+		creator.add_numeric_input('press_max_pnom')
+		# creator.add_numeric_input('vel_min')
+		creator.add_numeric_input('vel_max')
+		creator.add_numeric_input('vel_mean')
+		creator.add_numeric_input('ndvi_mean')
+		
+		# Get all input names
+		input_names = [i.name for i in creator.inputs]
+		
+		# Construct the model
+		model = creator.make_model(layers=cfg.layers, dropout=cfg.dropout, activation=cfg.activation, output_activation='relu')
+		
+		# Compile the model
+		model.compile(
+			optimizer=cfg.optimizer,
+			loss='mse',
+			metrics=[tf.metrics.MeanAbsoluteError(), tf.metrics.RootMeanSquaredError()]
+		)
+		
+		# Create model name
+		DATE = datetime.datetime.now().strftime('%d%m%Y_%H%M%S')
+		NAME = f"minsector-{cfg.as_string()}-time={DATE}"
+		print(NAME)
+		
+		# Make logs direcories
+		log_dir = os.path.join('logs', NAME)
+		save_dir = os.path.join('saves', NAME)
+		
+		os.makedirs(log_dir)
+		os.makedirs(save_dir)
+		
+		# Callback to be able to see error graphs
+		tb = TensorBoard(
+			log_dir=log_dir,
+			profile_batch=0
+		)
+		
+		# Callback which saves the best model based on the accuracy on the validation data
+		cp = ModelCheckpoint(
+			filepath=os.path.join(save_dir, 'checkp_{epoch:02d}-{val_loss:.3f}.hdf5'),
+			monitor='val_loss',
+			save_best_only=True,
+			verbose=0,
+			save_weights_only=False
+		)
+		
+		# Train the model
+		model.fit(
+			x=generator(batch_size=cfg.batch_size, input_names=input_names),
+			validation_data=generator(batch_size=200, input_names=input_names, validation=True),
+			validation_steps=5,
+			steps_per_epoch=300,
+			epochs=cfg.epochs,
+			callbacks=[tb, cp]
+		)
+		
+		# Save the model
+		model.save(os.path.join(save_dir, 'final.h5'))

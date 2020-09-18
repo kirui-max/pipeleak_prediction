@@ -1,6 +1,7 @@
-DROP VIEW IF EXISTS ws.v_ai_leak_minsector CASCADE;
+-- RAW
+DROP VIEW IF EXISTS ws.v_ai_leak_minsector_raw CASCADE;
 
-CREATE VIEW ws.v_ai_leak_minsector AS
+CREATE VIEW ws.v_ai_leak_minsector_raw AS
     SELECT 
         minsector_id,
         expl_id,
@@ -79,7 +80,8 @@ CREATE VIEW ws.v_ai_leak_minsector AS
 
                 FROM ws.v_ai_leak_arc_aux
 
-                WHERE broken = TRUE
+                WHERE 
+                    broken = TRUE
 
                 GROUP BY minsector_id) a
 
@@ -109,7 +111,15 @@ CREATE VIEW ws.v_ai_leak_minsector AS
                 mat_oth numeric
             )) b
         
-        USING (minsector_id)
+        USING (minsector_id);
+
+
+-- Training views
+DROP VIEW IF EXISTS ws.v_ai_leak_minsector CASCADE;
+
+CREATE VIEW ws.v_ai_leak_minsector AS 
+    SELECT * FROM 
+        ws.v_ai_leak_minsector_raw
 
     WHERE 
         frequency > (SELECT value FROM ws.config_param_system WHERE parameter = 'treshold_minsector_frequency_min')::numeric and

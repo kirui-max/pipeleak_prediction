@@ -4,3 +4,4 @@ models/
 /training/logs/
 __pycache__/
 config.conf
+logs/
